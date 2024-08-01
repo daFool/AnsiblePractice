@@ -1,0 +1,89 @@
+- name: Directory preparation and web restore
+  hosts: error
+  vars:
+      web_backup: /home/mos/20240630_web.tgz
+      web_tar: /data/restored_files/20240630_web.tgz
+      backup_root: /home/mos
+      home_backup: 20240630_hom.tgz
+      etc_backup: 20240630_etc.tgz
+      pgsql_dump: 20240630.dmp
+
+  tasks:
+  - name: Data
+    ansible.builtin.file:
+      path: /data
+      owner: root
+      group: wheel
+      state: directory
+
+  - name: Backup
+    ansible.builtin.file:
+      path: /backup
+      owner: jeeves
+      group: wheel
+      state: directory
+
+  - name: Restored-directory
+    ansible.builtin.file:  
+      path: /data/restored_files
+      owner: root
+      group: wheel
+      state: directory
+
+  - name: Web-directory
+    ansible.builtin.copy:
+      src: "{{ web_backup }}"
+      dest: /data/restored_files
+      owner: root
+      group: wheel
+      mode: '0755'
+
+  - name: Copy home backup
+    ansible.builtin.copy:
+      src: "{{ backup_root }}/{{ home_backup }}"
+      dest: /data/restored_files
+      owner: root
+      group: wheel
+      mode: '0755'
+
+  - name: Copy etc backup
+    ansible.builtin.copy:
+      src: "{{ backup_root }}/{{ etc_backup }}"
+      dest: /data/restored_files
+      owner: root
+      group: wheel
+      mode: '0755'
+
+  - name: Copy sql dump
+    ansible.builtin.copy:
+      src: "{{ backup_root }}/{{ pgsql_dump }}"
+      dest: /data/restored_files
+      owner: root
+      group: wheel
+      mode: '0755'
+
+  - name: Untar-web
+    ansible.builtin.unarchive:
+      src: "{{ web_tar }}"
+      dest: /
+      remote_src: true
+
+  - name: Untar-home
+    ansible.builtin.unarchive:
+      src: "/data/restored_files/{{ home_backup }}"
+      dest: /data/restored_files
+      remote_src: true
+
+  - name: Untar-etc
+    ansible.builtin.unarchive:
+      src: "/data/restored_files/{{ etc_backup }}"
+      dest: /data/restored_files
+      remote_src: true
+
+  - name: Set acl
+    ansible.posix.acl:
+      path: /web
+      entity: apache
+      etype: user
+      permissions: rx
+      state: present

@@ -1,0 +1,10 @@
+postgresql_hba_entries:
+  - { contype: local, databases: all, users: all,                     method: peer  }
+  - { contype: host,  databases: all, users: all,  address: samenet,  method: md5   }
+
+postgresql_options:
+  - { name: listen_addresses,     value: "*"    }
+  - { name: password_encryption,  value: "md5"  }
+
+postgresql_users:
+  - { db: postgres, name: "instuser", password: "{{ vault_instuser_password }}", roles: "superuser" }

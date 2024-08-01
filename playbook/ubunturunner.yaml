@@ -1,0 +1,30 @@
+- name: Deploys VM based on cloud image
+  hosts: jeeves
+  gather_facts: true
+  become: true
+  vars:
+    pool_dir: "/var/lib/libvirt/images"
+    vm: ubuntu-runner
+    vcpus: 2
+    ram_mb: 2048
+    cleanup: false
+    net: default
+    ssh_pub_key_local: "/home/mos/.ssh/id_rsa.pub"
+    ssh_pub_key_target: "/tmp/id_rsa.pub"    
+  tasks:
+    - name: Copy ssh_key
+      ansible.builtin.copy:
+        src: "{{ ssh_pub_key_local }}"
+        dest: "{{ ssh_pub_key_target }}"
+    - name: KVM Provision role
+      ansible.builtin.include_role:
+        name: kvm_provision
+      vars:
+        libvirt_pool_dir: "{{ pool_dir }}"
+        vm_name: "{{ vm }}"
+        vm_vcpus: "{{ vcpus }}"
+        vm_ram_mb: "{{ ram_mb }}"
+        vm_net: "{{ net }}"
+        cleanup_tmp: "{{ cleanup }}"
+        ssh_key: "{{ ssh_pub_key_target }}"
+          

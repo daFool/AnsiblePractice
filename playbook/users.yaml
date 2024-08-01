@@ -1,0 +1,31 @@
+- name: Users for remote machines
+  hosts: all
+  vars_prompt:
+    - name: mai_password
+      prompt: Enter password for Mai
+  tasks:
+  - name: Backup-group
+    ansible.builtin.group:
+      name: backup
+      state: present
+  - name: Add the user 'mos' with wheel group
+    ansible.builtin.user:
+      name: mos
+      comment: Mai Sahlberg
+      groups: wheel, backup
+      create_home: yes
+      append: yes
+      password: "{{ mai_password | password_hash('sha512')}}"
+
+  - name: Add the user 'jeeves' for backup
+    ansible.builtin.user:
+      name : jeeves
+      comment: Backup to Jeeves
+      group: backup
+      create_home: yes
+
+  - name: Add authorized key for Mai
+    ansible.posix.authorized_key:
+      user: mos
+      state: present
+      key : "{{ lookup('file', '/home/mos/.ssh/id_rsa.pub')}}"

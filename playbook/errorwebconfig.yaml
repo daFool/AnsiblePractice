@@ -1,0 +1,112 @@
+- name: Configure apache on error
+  hosts: error
+  vars:
+    web_file_dir: /data/restored_files/etc/httpd/conf.d
+    config_dir: /etc/httpd/conf.d
+    letsencrypt_src: /data/restored_files/etc/letsencrypt
+    letsencrypt_dest: /etc/letsencrypt
+    web_site_files:
+      - generalfailure.net.conf
+      - tuolla.com.conf
+      - tuolla.net.conf
+      - claymountain.com.conf
+
+  tasks:
+    - name: Copy sites to Apache config_dir
+      ansible.builtin.copy:
+        src: "{{ web_file_dir }}/{{ item }}"
+        dest: "{{ config_dir }}/"
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: true
+      loop: "{{ web_site_files }}"
+      notify: Restore selinux context
+
+    - name: Copy Letsencrypt directory
+      ansible.builtin.copy:
+        src: "{{ letsencrypt_src }}"
+        dest: "/etc/"
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: true
+      notify: Restore selinux context
+    - name: Start apache
+      ansible.builtin.service:
+        name: httpd
+        state: started
+        enabled: true
+    - name: Enable firewall for apache
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - http
+        - https
+    - name: Allow apache to read and modify files in /web
+      community.general.sefcontext:
+        target: '/web(/.*)?'
+        setype: httpd_sys_rw_content_t
+        state: present
+      notify:
+        - Web context restorecon
+    - name: Sets default ACL for /web
+      ansible.posix.acl:
+        path: /web/
+        entity: apache
+        etype: user
+        permissions: rx
+        default: true
+        state: present
+    - name: Sets ACL for /web
+      ansible.posix.acl:
+        path: /web/
+        entity: apache
+        etype: user
+        permissions: rx
+        recursive: true
+        default: false
+        state: present
+    - name: Sets default ACL for /var/log/httpd
+      ansible.posix.acl:
+        path: /var/log/httpd
+        entity: wheel
+        etype: group
+        permissions: rx
+        default: true
+        recursive: true
+        state: present
+    - name: Sets ACL for /var/log/httpd
+      ansible.posix.acl:
+        path: /var/log/httpd
+        entity: wheel
+        etype: group
+        permissions: rx
+        default: false
+        recursive: true
+        state: present
+    - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: true
+        persistent: true
+    - name: Set httpd_can_network_connect_db flag on and keep it persistent across reboots
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect_db
+        state: true
+        persistent: true
+
+  handlers:
+    - name: Restore selinux context
+      ansible.builtin.command:
+        cmd: restorecon -Rv {{ item }}
+      loop:
+        - "{{ config_dir }}"
+        - "{{ letsencrypt_dest }}"
+    - name: Web context restorecon
+      ansible.builtin.command:
+        cmd: restorecon -Rv /web
+      

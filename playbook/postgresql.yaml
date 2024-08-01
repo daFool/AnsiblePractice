@@ -1,0 +1,74 @@
+- name: Install postgresql
+  hosts: error
+  become: true
+
+  vars_files:
+    - vars/postgresql.yaml
+    - vars/vault.yaml
+
+  handlers:
+    - name: Restart postgresql
+      ansible.builtin.service:
+        name: postgresql
+        state: restarted
+      become: true
+      become_user: root
+
+  tasks:
+    - name: Install postgresql
+      ansible.builtin.dnf:
+        name:
+          - postgresql
+          - postgresql-server
+          - postgresql-contrib
+          - python3-psycopg2
+        state: present
+        update_cache: true
+    - name: Initialize postgresql
+      ansible.builtin.command:
+        cmd: postgresql-setup initdb
+        creates: /var/lib/pgsql/data/PG_VERSION
+    - name: Start postgresql
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+        enabled: true
+    - name: Enable network access to postgresql in postgresql
+      community.postgresql.postgresql_set:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+      become: true
+      become_user: postgres
+      with_items: "{{ postgresql_options | default([]) }}"
+      notify:
+        - Restart postgresql
+
+    - name: Add users to postgresql
+      community.postgresql.postgresql_user:
+        db: "{{ item.db }}"
+        name: "{{ item.name }}"
+        password: "{{ item.password }}"
+        role_attr_flags: "{{ item.roles }}"
+      become: true
+      become_user: postgres
+      with_items: "{{ postgresql_users }}"
+
+    - name: Add tableauserver to pg_hba.conf
+      community.postgresql.postgresql_pg_hba:
+        dest: "/var/lib/pgsql/data/pg_hba.conf"
+        address: "{{ item.address | default(omit) }}"
+        contype: "{{ item.contype }}"
+        databases: "{{ item.databases }}"
+        method: "{{ item.method }}"
+        users: "{{ item.users }}"
+      become: true
+      become_user: postgres
+      with_items: "{{ postgresql_hba_entries }}"
+      notify:
+        - Restart postgresql
+    - name: Enable firewall for postgresql
+      ansible.posix.firewalld:
+        service: postgresql
+        permanent: true
+        state: enabled
+        immediate: true

@@ -1,0 +1,28 @@
+- name: Essential packages
+  hosts: all
+  tasks:
+  - name: Enable epel
+    dnf:
+      name:
+        - epel-release      
+      state: present
+       
+  - name: Packages
+    dnf:
+      name: 
+        - dnf-utils
+        - dovecot
+        - fail2ban
+        - httpd
+        - mod_ssl
+        - php
+        - php-cli
+        - php-gd
+        - php-mbstring
+        - php-odbc
+        - php-pdo
+        - php-pear
+        - php-pgsql
+        - php-xml
+        - postfix
+      state: latest

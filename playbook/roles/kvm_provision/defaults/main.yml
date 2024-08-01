@@ -1,0 +1,13 @@
+---
+# defaults file for kvm_provision
+base_image_name: noble-server-cloudimg-amd64.img
+base_image_url: https://cloud-images.ubuntu.com/noble/current/{{ base_image_name }}
+base_image_sha: 5d482ff93a2ba3cf7e609551733ca238ed81a6afdaafcdce53140546b09a6195
+libvirt_pool_dir: 5d482ff93a2ba3cf7e609551733ca238ed81a6afdaafcdce53140546b09a6195
+vm_name: ubuntu-runner
+vm_vcpus: 2
+vm_ram_mb: 2048
+vm_net: default
+vm_root_pass: DoNotDoThis!
+cleanup_tmp: false
+ssh_key: /home/mos/.ssh/id_rsa.pub
